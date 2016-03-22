@@ -1,0 +1,11 @@
+name: CraftBird
+description: Bukkit Twitter Plugin
+author: glatteis
+version: 1.0
+main: me.glatteis.craftbird.CraftBird
+
+commands:
+  twitter:
+    description: Main Twitter Command
+    permission: craftbird.tweet
+    usage: /twitter login
