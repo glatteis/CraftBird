@@ -13,29 +13,26 @@ public class StreamingUtils {
 
     public void addStream(final Player player, final TwitterProfile profile) throws TwitterException {
         if (profile.getStream() != null) return;
-        TwitterStreamFactory factory = new TwitterStreamFactory();
+        final TwitterStreamFactory factory = new TwitterStreamFactory();
         profile.setListener(new UserStreamListener() {
             @Override
-            public void onDeletionNotice(long l, long l1) {
-
-            }
+            public void onDeletionNotice(long l, long l1) {}
 
             @Override
-            public void onFriendList(long[] longs) {
-
-            }
+            public void onFriendList(long[] longs) {}
 
             @Override
             public void onFavorite(User user, User user1, Status status) {
-                player.sendMessage(ChatColor.BLUE + user.getScreenName() + " liked your tweet:");
-                player.sendMessage(status.getText());
-                player.sendMessage("");
+                try {
+                    if (user.getScreenName().equalsIgnoreCase(profile.getTwitter().getScreenName())) return;
+                    player.sendMessage(ChatColor.BLUE + user.getScreenName() + " liked your tweet:");
+                    player.sendMessage(status.getText());
+                    player.sendMessage("");
+                } catch (Exception e) {}
             }
 
             @Override
-            public void onUnfavorite(User user, User user1, Status status) {
-
-            }
+            public void onUnfavorite(User user, User user1, Status status) {}
 
             @Override
             public void onFollow(User user, User user1) {
@@ -63,64 +60,40 @@ public class StreamingUtils {
             public void onDirectMessage(DirectMessage directMessage) {}
 
             @Override
-            public void onUserListMemberAddition(User user, User user1, UserList userList) {
-
-            }
+            public void onUserListMemberAddition(User user, User user1, UserList userList) {}
 
             @Override
-            public void onUserListMemberDeletion(User user, User user1, UserList userList) {
-
-            }
+            public void onUserListMemberDeletion(User user, User user1, UserList userList) {}
 
             @Override
-            public void onUserListSubscription(User user, User user1, UserList userList) {
-
-            }
+            public void onUserListSubscription(User user, User user1, UserList userList) {}
 
             @Override
-            public void onUserListUnsubscription(User user, User user1, UserList userList) {
-
-            }
+            public void onUserListUnsubscription(User user, User user1, UserList userList) {}
 
             @Override
-            public void onUserListCreation(User user, UserList userList) {
-
-            }
+            public void onUserListCreation(User user, UserList userList) {}
 
             @Override
-            public void onUserListUpdate(User user, UserList userList) {
-
-            }
+            public void onUserListUpdate(User user, UserList userList) {}
 
             @Override
-            public void onUserListDeletion(User user, UserList userList) {
-
-            }
+            public void onUserListDeletion(User user, UserList userList) {}
 
             @Override
-            public void onUserProfileUpdate(User user) {
-
-            }
+            public void onUserProfileUpdate(User user) {}
 
             @Override
-            public void onUserSuspension(long l) {
-
-            }
+            public void onUserSuspension(long l) {}
 
             @Override
-            public void onUserDeletion(long l) {
-
-            }
+            public void onUserDeletion(long l) {}
 
             @Override
-            public void onBlock(User user, User user1) {
-
-            }
+            public void onBlock(User user, User user1) {}
 
             @Override
-            public void onUnblock(User user, User user1) {
-
-            }
+            public void onUnblock(User user, User user1) {}
 
             @Override
             public void onRetweetedRetweet(User user, User user1, Status status) {
@@ -155,44 +128,7 @@ public class StreamingUtils {
 
             @Override
             public void onStatus(Status status) {
-                while (status.isRetweet()) {
-                    sendJsonMesage(new String[][]{
-                            new String[] {ChatColor.GREEN + "↹" + ChatColor.GRAY + status.getUser().getName()},
-                            new String[] {ChatColor.GRAY + " @" + status.getUser().getScreenName(), "/twitter viewprofile " +
-                                    status.getUser().getId(), "View this user's profile"},
-                    },player);
-                    status = status.getRetweetedStatus();
-                }
-
-                sendJsonMesage(new String[][]{
-                        new String[] {ChatColor.BLUE + status.getUser().getName()},
-                        new String[] {ChatColor.GRAY + " @" + status.getUser().getScreenName(), "/twitter viewprofile " +
-                                status.getUser().getId(), "View this user's profile"}
-                },player);
-                String text = status.getText();
-                for (URLEntity entity : status.getURLEntities()) {
-                    text = text.replace(entity.getURL(), entity.getExpandedURL());
-                }
-                for (URLEntity entity : status.getURLEntities()) {
-                    if (entity.getExpandedURL().contains("twitter.com/") && entity.getExpandedURL().contains("/status/")) {
-                        player.sendMessage(ChatColor.GRAY + "   ”” Quoted");
-                        try {
-                            onStatus(profile.getTwitter().showStatus(Long.valueOf(entity.getExpandedURL().split("/")[5])));
-                        } catch (TwitterException e) {
-                            e.printStackTrace();
-                        }
-                        player.sendMessage(ChatColor.GRAY + "   ””");
-                        text = text.replace(entity.getExpandedURL(), "");
-                    }
-                }
-                player.sendMessage(text);
-                sendJsonMesage(new String[][] {
-                        new String[] {ChatColor.RED + "♥ ", "/twitter like " + status.getId(), "Like this tweet"},
-                        new String[] {ChatColor.GREEN+ "↹ ", "/twitter rt " + status.getId(), "Retweet this tweet"},
-                        new String[] {ChatColor.BLUE + "↜ ", "/twitter reply " + status.getId(), "Reply to this tweet"},
-                        new String[] {ChatColor.BLUE + "”", "/twitter quote " + status.getId(), "Quote this tweet"}
-
-                }, player);
+                sendStatus(status, player, profile, 0);
             }
 
             @Override
@@ -228,7 +164,6 @@ public class StreamingUtils {
 
     public void removeStream(TwitterProfile profile) {
         if (profile.getStream() != null) {
-            profile.getStream().cleanUp();
             profile.getStream().clearListeners();
         }
         profile.setListener(null);
@@ -259,7 +194,62 @@ public class StreamingUtils {
         }
     }
 
+    public void sendStatus(Status status, Player player, TwitterProfile profile, int citation) {
+        while (status.isRetweet()) {
+            sendJsonMesage(new String[][]{
+                    citationSpaces(citation),
+                    new String[] {ChatColor.GREEN + "↹" + ChatColor.GRAY + status.getUser().getName()},
+                    new String[] {ChatColor.GRAY + " @" + status.getUser().getScreenName(), "/twitter viewprofile " +
+                            status.getUser().getId(), "View this user's profile"},
+            },player);
+            status = status.getRetweetedStatus();
+        }
 
+        sendJsonMesage(new String[][]{
+                citationSpaces(citation),
+                new String[] {ChatColor.BLUE + status.getUser().getName()},
+                new String[] {ChatColor.GRAY + " @" + status.getUser().getScreenName(), "/twitter viewprofile " +
+                        status.getUser().getId(), "View this user's profile"},
+                (status.getInReplyToScreenName() == null ? new String[] {""} :
+                        new String[] {ChatColor.GRAY + " [View Conversation]", "/twitter viewconv " + status.getId(),
+                                "View Conversation"})},player);
+
+        String text = status.getText();
+        for (URLEntity entity : status.getURLEntities()) {
+            text = text.replace(entity.getURL(), entity.getExpandedURL());
+        }
+        for (URLEntity entity : status.getURLEntities()) {
+            if (entity.getExpandedURL().contains("twitter.com/") && entity.getExpandedURL().contains("/status/")) {
+                player.sendMessage(ChatColor.GRAY + "   ”” Quoted");
+                try {
+                    sendStatus(profile.getTwitter().showStatus(Long.valueOf(entity.getExpandedURL().split("/")[5])),
+                            player, profile, citation + 1);
+                } catch (TwitterException e) {
+                    e.printStackTrace();
+                }
+                player.sendMessage(ChatColor.GRAY + "   ””");
+                text = text.replace(entity.getExpandedURL(), "");
+            }
+        }
+        player.sendMessage(text);
+        sendJsonMesage(new String[][] {
+                citationSpaces(citation),
+                new String[] {"    "},
+                new String[] {ChatColor.RED + "♥ ", "/twitter like " + status.getId(), "Like this tweet"},
+                new String[] {ChatColor.GREEN+ "↹ ", "/twitter rt " + status.getId(), "Retweet this tweet"},
+                new String[] {ChatColor.BLUE + "↜ ", "/twitter reply " + status.getId(), "Reply to this tweet"},
+                new String[] {ChatColor.BLUE + "” ", "/twitter quote " + status.getId(), "Quote this tweet"}
+
+        }, player);
+    }
+
+    private String[] citationSpaces(int c) {
+        String s = "";
+        for (;c!=0;c--) {
+            s += "  ";
+        }
+        return new String[] {s};
+    }
 
     private Class<?> getNMSClass(String className) {
         String packageName = Bukkit.getServer().getClass().getPackage().getName();

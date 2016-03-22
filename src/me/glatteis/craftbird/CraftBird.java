@@ -6,14 +6,13 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import twitter4j.Twitter;
-import twitter4j.TwitterException;
-import twitter4j.TwitterFactory;
-import twitter4j.User;
+import twitter4j.*;
 import twitter4j.auth.AccessToken;
 import twitter4j.auth.RequestToken;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Created by Linus on 21.03.2016.
@@ -65,7 +64,7 @@ public class CraftBird extends JavaPlugin {
         if (args[0].equalsIgnoreCase("advanced")) {
             sender.sendMessage("These are advanced commands.");
             sender.sendMessage("They are mainly meant to be executed if a user clicks something.");
-            sender.sendMessage("/twitter like|rt|quote [statusID]");
+            sender.sendMessage("/twitter like|rt|quote|viewconv [statusID]");
             sender.sendMessage("/twitter reply [statusID]; then @r [reply]");
             sender.sendMessage("/twitter viewprofile [userID]");
         }
@@ -104,7 +103,8 @@ public class CraftBird extends JavaPlugin {
                 sender.sendMessage(ChatColor.RED + "Failed: " + e.getMessage());
             }
         } else if (args[0].equalsIgnoreCase("like") || args[0].equalsIgnoreCase("rt") ||
-                args[0].equalsIgnoreCase("reply") | args[0].equalsIgnoreCase("quote")) {
+                args[0].equalsIgnoreCase("reply") | args[0].equalsIgnoreCase("quote") ||
+                args[0].equalsIgnoreCase("viewconv")) {
             if (args.length == 1) {
                 sender.sendMessage("/twitter like|rt|reply|quote [statusID]");
                 return true;
@@ -132,6 +132,26 @@ public class CraftBird extends JavaPlugin {
             } else if (args[0].equalsIgnoreCase("quote")) {
                 profile.setPendingQuote(Long.valueOf(id));
                 sender.sendMessage(ChatColor.BLUE + "Quote with " + ChatColor.WHITE + "@q");
+            } else if (args[0].equalsIgnoreCase("viewconv")) {
+                try {
+                    if (profile.getStream() == null) {
+                        sender.sendMessage("Not possible with twitter disabled.");
+                        return true;
+                    }
+                    Status s = profile.getTwitter().showStatus(Long.valueOf(id));
+                    List<Status> conversation = new ArrayList<Status>();
+                    conversation.add(s);
+                    while (s.getInReplyToScreenName() != null) {
+                        s = profile.getTwitter().showStatus(s.getInReplyToStatusId());
+                        conversation.add(s);
+                    }
+                    sender.sendMessage(ChatColor.BLUE + "Conversation:");
+                    for (Status status : conversation) {
+                        streamingUtils.sendStatus(status, ((Player)sender), profile, 1);
+                    }
+                } catch (Exception e) {
+                    sender.sendMessage(ChatColor.RED + "Failed: " + e.getMessage());
+                }
             }
         } else if (args[0].equalsIgnoreCase("viewprofile")) {
             if (args.length == 1) {
